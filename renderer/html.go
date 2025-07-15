@@ -78,47 +78,10 @@ func (r *HTMLRenderer) RenderHTML(htmlContent, baseURL string) (*goquery.Documen
 		}
 	})
 
-	// Extract and print navigation/menu items
-	navCount := 0
-	doc.Find("nav a, .nav a, .menu a").Each(func(i int, s *goquery.Selection) {
-		text := strings.TrimSpace(s.Text())
-		href, exists := s.Attr("href")
-		if exists && text != "" && navCount < 10 {
-			navCount++
-			if navCount == 1 {
-				fmt.Println("\n🧭 NAVIGATION:")
-			}
-			fmt.Printf("  • %s (%s)\n", text, href)
-		}
-	})
+	// Note: Link extraction and numbering is now handled by the Navigator
+	// This renderer focuses on content display only
 
-	// Extract and print important links
-	linkCount := 0
-	doc.Find("a").Each(func(i int, s *goquery.Selection) {
-		text := strings.TrimSpace(s.Text())
-		href, exists := s.Attr("href")
-		if exists && text != "" && len(text) > 3 && linkCount < 15 {
-			linkCount++
-			if linkCount == 1 {
-				fmt.Println("\n🔗 LINKS:")
-			}
-			fmt.Printf("  → %s (%s)\n", text, href)
-		}
-	})
-
-	// For HN-specific: Extract story items
-	storyCount := 0
-	doc.Find(".athing").Each(func(i int, s *goquery.Selection) {
-		title := strings.TrimSpace(s.Find(".titleline > a").Text())
-		link := s.Find(".titleline > a").AttrOr("href", "")
-		if title != "" {
-			storyCount++
-			if storyCount == 1 {
-				fmt.Println("\n📰 HACKER NEWS STORIES:")
-			}
-			fmt.Printf("  %d. %s (%s)\n", storyCount, title, link)
-		}
-	})
+	// Note: Story extraction is now handled by the Navigator for interactive selection
 
 	// Extract lists
 	listCount := 0
@@ -138,7 +101,8 @@ func (r *HTMLRenderer) RenderHTML(htmlContent, baseURL string) (*goquery.Documen
 
 	// Summary
 	fmt.Printf("\n" + strings.Repeat("=", 60))
-	fmt.Printf("\n📊 CONTENT SUMMARY: %d headings, %d paragraphs, %d links\n", headingCount, paragraphCount, linkCount)
+	fmt.Printf("\n📊 CONTENT SUMMARY: %d headings, %d paragraphs\n", headingCount, paragraphCount)
+	fmt.Println("💡 Use navigation menu to interact with links")
 	fmt.Println(strings.Repeat("=", 60))
 
 	return doc, nil

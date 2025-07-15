@@ -2,24 +2,26 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
+	"strings"
 
 	"brauser/browser"
 	"brauser/js"
+	"brauser/navigation"
 	"brauser/renderer"
 )
 
-// main is the entry point of the Brauser application.
+// main is the entry point of the Brauser application with interactive navigation.
 func main() {
-	fmt.Println("Brauser: Minimalistic Terminal Web Browser")
+	fmt.Println("Brauser: Minimalistic Terminal Web Browser with Interactive Navigation")
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: brauser <url> [--no-retry]")
 		fmt.Println("  --no-retry: Disable content detection and retry logic")
+		fmt.Println("  Interactive features: numbered links, back/forward, URL bar")
 		return
 	}
 	
-	url := os.Args[1]
+	initialURL := os.Args[1]
 	enableRetry := true
 	
 	// Check for --no-retry flag
@@ -28,10 +30,102 @@ func main() {
 		fmt.Println("Content detection and retry logic disabled")
 	}
 	
-	// Create browser client
+	// Create components
 	client := browser.NewClient()
+	htmlRenderer := renderer.NewHTMLRenderer()
+	navigator := navigation.NewNavigator()
 	
-	// Fetch page content with enhanced detection
+	// Start interactive browsing session
+	startInteractiveBrowsing(client, htmlRenderer, navigator, initialURL, enableRetry)
+}
+
+// startInteractiveBrowsing handles the main interactive browsing loop
+func startInteractiveBrowsing(client *browser.Client, htmlRenderer *renderer.HTMLRenderer, navigator *navigation.Navigator, initialURL string, enableRetry bool) {
+	currentURL := initialURL
+	
+	for {
+		// Fetch and display page
+		if err := loadAndDisplayPage(client, htmlRenderer, navigator, currentURL, enableRetry); err != nil {
+			fmt.Printf("❌ Error loading page: %v\n", err)
+			continue
+		}
+		
+		// Show navigation menu and get user input
+		navigator.ShowNavigationMenu()
+		navigator.DisplayLinks()
+		
+		for {
+			input, err := navigator.GetUserInput()
+			if err != nil {
+				fmt.Printf("❌ Error reading input: %v\n", err)
+				continue
+			}
+			
+			action, data := navigator.ProcessUserInput(input)
+			
+			switch action {
+			case "navigate":
+				currentURL = data.(string)
+				fmt.Printf("🌐 Navigating to: %s\n", currentURL)
+				goto loadPage // Break inner loop and load new page
+				
+			case "back":
+				if entry := navigator.GoBack(); entry != nil {
+					currentURL = entry.URL
+					fmt.Printf("⬅️  Going back to: %s\n", currentURL)
+					// Display cached content
+					displayCachedPage(entry)
+					navigator.ShowNavigationMenu()
+					navigator.DisplayLinks()
+				}
+				
+			case "forward":
+				if entry := navigator.GoForward(); entry != nil {
+					currentURL = entry.URL
+					fmt.Printf("➡️  Going forward to: %s\n", currentURL)
+					// Display cached content
+					displayCachedPage(entry)
+					navigator.ShowNavigationMenu()
+					navigator.DisplayLinks()
+				}
+				
+			case "history":
+				navigator.ShowHistory()
+				
+			case "links":
+				navigator.DisplayLinks()
+				
+			case "url":
+				newURL, err := navigator.PromptForURL()
+				if err != nil {
+					fmt.Printf("❌ Error: %v\n", err)
+				} else {
+					currentURL = newURL
+					fmt.Printf("🌐 Navigating to: %s\n", currentURL)
+					goto loadPage
+				}
+				
+			case "refresh":
+				fmt.Printf("🔄 Refreshing: %s\n", currentURL)
+				goto loadPage
+				
+			case "quit":
+				fmt.Println("👋 Thanks for using Brauser!")
+				return
+				
+			case "error":
+				fmt.Printf("❌ %s\n", data.(string))
+			}
+		}
+		
+		loadPage:
+		// Continue to next iteration to load the new page
+	}
+}
+
+// loadAndDisplayPage fetches, renders, and processes a web page
+func loadAndDisplayPage(client *browser.Client, htmlRenderer *renderer.HTMLRenderer, navigator *navigation.Navigator, url string, enableRetry bool) error {
+	// Fetch page content
 	var content string
 	var analysis *browser.ContentAnalysis
 	var err error
@@ -39,7 +133,7 @@ func main() {
 	if enableRetry {
 		content, analysis, err = client.FetchPageWithEnhancedDetection(url)
 		if err != nil {
-			log.Fatalf("Failed to fetch page: %v", err)
+			return fmt.Errorf("failed to fetch page: %v", err)
 		}
 		
 		// Display content analysis results
@@ -47,22 +141,43 @@ func main() {
 	} else {
 		content, err = client.FetchPageWithRetry(url, false)
 		if err != nil {
-			log.Fatalf("Failed to fetch page: %v", err)
+			return fmt.Errorf("failed to fetch page: %v", err)
 		}
 	}
-	
-	// Create HTML renderer
-	htmlRenderer := renderer.NewHTMLRenderer()
 	
 	// Render HTML content
 	doc, err := htmlRenderer.RenderHTML(content, url)
 	if err != nil {
-		log.Fatalf("Failed to render HTML: %v", err)
+		return fmt.Errorf("failed to render HTML: %v", err)
 	}
 	
 	// Execute embedded JavaScript
 	title := doc.Find("title").Text()
 	js.ExecuteJS(doc, title)
+	
+	// Extract links for navigation
+	navigator.ExtractLinks(doc, url)
+	
+	// Add to history
+	navigator.AddToHistory(url, title, content)
+	
+	return nil
+}
+
+// displayCachedPage shows a cached page from history
+func displayCachedPage(entry *navigation.HistoryEntry) {
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("           BRAUSER - CACHED CONTENT")
+	fmt.Println(strings.Repeat("=", 60))
+	
+	if entry.Title != "" {
+		fmt.Printf("\n📄 TITLE: %s\n", entry.Title)
+		fmt.Println(strings.Repeat("-", len(entry.Title)+10))
+	}
+	
+	fmt.Printf("🌐 URL: %s\n", entry.URL)
+	fmt.Println("\n💾 (Displaying cached content - use 'r' to refresh)")
+	fmt.Println(strings.Repeat("=", 60))
 }
 
 // displayContentAnalysis shows the content analysis results to the user
