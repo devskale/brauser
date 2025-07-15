@@ -66,17 +66,25 @@ Ideation on tools and modules:
   - [ ] Add comprehensive unit tests
   - [ ] Optimize performance bottlenecks
   - [ ] Improve memory management
-  7. **CONTENT DETECTION & DYNAMIC LOADING IMPROVEMENTS**
-  - [ ] Enhanced Content Detection: Detect when sites show loading pages vs actual content
-  - [ ] Wait Mechanisms: Add optional delays for sites that load content dynamically
-  - [ ] Content Validation: Verify if extracted content represents actual page or loading screen
-  - [ ] Site-Specific Handling: Add CodePen-specific handling for better content processing
-  - [ ] Loading State Recognition: Identify common loading indicators ("Just a moment...", spinners, etc.)
-  - [ ] Retry Logic: Implement smart retry mechanisms for pages that require time to load
-  - [ ] Handle cookie/adblock banners and other interstitial pages
-  8. Implement navigation (links, back/forward) and user input.
-  9. Test on MacOS for cross-platform compatibility.
-  10. Optimize for performance and minimalism.
+  7. [x] **CONTENT DETECTION & DYNAMIC LOADING IMPROVEMENTS**
+  - [x] Enhanced Content Detection: Detect when sites show loading pages vs actual content
+  - [x] Wait Mechanisms: Add optional delays for sites that load content dynamically
+  - [x] Content Validation: Verify if extracted content represents actual page or loading screen
+  - [x] Site-Specific Handling: Add CodePen-specific handling for better content processing
+  - [x] Loading State Recognition: Identify common loading indicators ("Just a moment...", spinners, etc.)
+  - [x] Retry Logic: Implement smart retry mechanisms for pages that require time to load
+  - [x] Handle cookie/adblock banners and other interstitial pages
+  8. [x] **VISUAL ENHANCEMENTS & GZIP SUPPORT**
+  - [x] Enhanced HTML renderer with beautiful formatting
+  - [x] Hierarchical heading display with emojis
+  - [x] Structured content sections (navigation, links, lists)
+  - [x] Content summary statistics
+  - [x] GZIP decompression support for HTTP responses
+  - [x] Improved ASCII art image rendering
+  - [x] Visual content boundaries and separators
+  9. Implement navigation (links, back/forward) and user input.
+  10. Test on MacOS for cross-platform compatibility.
+  11. Optimize for performance and minimalism.
 
 ## Project Structure
 
@@ -86,7 +94,9 @@ The brauser project is organized into focused packages for maintainability:
 brauser/
 ├── main.go              # Entry point and CLI handling
 ├── browser/             # HTTP client functionality
-│   └── client.go        # Web page fetching with timeout/headers
+│   ├── client.go        # Web page fetching with timeout/headers and GZIP support
+│   ├── content_detector.go # Content analysis engine for dynamic loading detection
+│   └── site_handlers.go # Site-specific handlers for popular websites
 ├── js/                  # JavaScript execution environment
 │   ├── environment.go   # JS VM setup and stub management
 │   ├── executor.go      # Script processing and execution
@@ -101,6 +111,7 @@ brauser/
 ```
 
 **Key Design Principles:**
+
 - **Single Responsibility**: Each package handles one specific concern
 - **Loose Coupling**: Packages communicate through well-defined interfaces
 - **Testability**: Modular structure enables comprehensive unit testing
@@ -130,8 +141,21 @@ https://cnn.com
 6. **Code Organization**: Refactoring monolithic code into packages improves maintainability and testability
 7. **Go Module System**: Proper import paths are crucial - relative imports don't work in module mode
 8. **Struct Definition**: Complex nested structs require careful attention to closing braces and field access patterns
+9. **Content Detection**: Modern websites often show loading screens, cookie banners, or adblock messages before actual content
+10. **Dynamic Loading**: Many sites load content asynchronously, requiring retry mechanisms with appropriate wait times
+11. **Site-Specific Patterns**: Different sites have unique loading patterns and content structures that benefit from specialized handling
+12. **User Feedback**: Clear visual indicators help users understand what's happening during page loading and content analysis.
+
+13. **HTTP Compression**: Modern websites use GZIP compression extensively - proper decompression is essential for content parsing.
+
+14. **Visual Terminal Design**: Well-structured terminal output with emojis, separators, and hierarchical formatting significantly improves readability.
+
+15. **Content Extraction Strategy**: Different content types (headings, paragraphs, navigation, lists) require different extraction and display strategies.
+
+16. **ASCII Art Limitations**: SVG and complex image formats often fail ASCII conversion - graceful error handling is important.
 
 ### Configuration Management
+
 - **External Configuration**: Move complex settings to external JSON/YAML files for runtime customization
 - **Granular Control**: Enable/disable specific feature categories independently (console, DOM, browser, storage, webapi, frameworks, site_specific)
 - **Fallback Strategy**: Always provide sensible defaults when configuration loading fails
@@ -293,3 +317,148 @@ Implemented comprehensive JavaScript error handling with categorization, suppres
   - React.dev: Clean execution after matchMedia addition ✅
   - StackOverflow.com: Major APIs working, only method-specific issues remain ✅
 - Testing shows excellent DOM stub coverage across diverse modern websites; remaining errors are primarily syntax errors and complex framework patterns, which is expected for a terminal browser.
+
+## Content Detection & Dynamic Loading
+
+**Status**: ✅ COMPLETED
+
+Implemented comprehensive content detection and dynamic loading capabilities to handle modern websites that show loading screens, cookie banners, or load content asynchronously.
+
+### Features
+
+- **Content Analysis Engine**: Analyzes page content to determine loading state, detect banners, and validate content completeness
+- **Smart Retry Logic**: Automatically retries page loading with appropriate wait times when content appears incomplete
+- **Site-Specific Handlers**: Specialized processing for different websites (CodePen, DerStandard, SPAs)
+- **Loading State Detection**: Recognizes common loading indicators and interstitial pages
+- **Banner Detection**: Identifies cookie consent and adblock detection banners
+- **User Feedback**: Provides detailed analysis results to help users understand content state
+- **Configurable Timeouts**: Customizable retry limits and wait times to prevent hanging
+
+### Implementation Details
+
+- **ContentDetector**: Core analysis engine that examines HTML content for loading indicators, banners, and content quality
+- **SiteHandlerManager**: Manages site-specific processing rules and handlers
+- **Enhanced Client**: Browser client with integrated retry logic and content validation
+- **Analysis Reporting**: User-friendly display of content analysis results with emoji indicators
+
+### Site-Specific Handlers
+
+- **CodePen Handler**: Extracts pen titles, descriptions, and code snippets with 3-second retry logic
+- **DerStandard Handler**: Detects adblock banners and extracts article content
+- **Generic SPA Handler**: Handles single-page applications with dynamic content loading
+
+### Content Detection Patterns
+
+- **Loading Indicators**: "just a moment", "loading", "please wait", "checking your browser"
+- **Cookie Banners**: "accept cookies", "cookie policy", "we use cookies", "privacy policy"
+- **AdBlock Banners**: "disable adblock", "ad blocker detected", "whitelist this site"
+- **Security Checks**: "cloudflare", "ddos protection", "security check"
+
+### Usage
+
+```bash
+# Default mode with content detection and retry logic
+./brauser https://example.com
+
+# Disable content detection for faster loading
+./brauser https://example.com --no-retry
+```
+
+### Testing Results
+
+- **DerStandard.at**: Successfully detects content without false positives for adblock banners
+- **CodePen.io**: Properly handles dynamic loading with 3-second retries
+- **Various Sites**: Accurate detection of loading states and content completeness
+
+### Development Guidelines
+
+- Implement pattern-based detection for common loading indicators and banners
+- Use site-specific handlers for websites with unique content structures
+- Provide clear user feedback about content analysis and retry attempts
+- Balance retry logic to avoid excessive delays while ensuring content completeness
+- Design modular handlers that can be easily extended for new sites
+
+## Visual Enhancements & GZIP Support Implementation
+
+**Status**: ✅ COMPLETED
+
+Implemented comprehensive visual enhancements and GZIP support to improve content display and handle modern web compression.
+
+### Features
+
+- **Enhanced HTML Renderer**: Beautiful terminal formatting with emojis and visual separators
+- **Hierarchical Content Display**: Different styling for H1, H2, and other headings
+- **Structured Content Sections**: Organized display of navigation, links, lists, and main content
+- **Content Summary Statistics**: Shows counts of headings, paragraphs, and links
+- **GZIP Decompression**: Proper handling of compressed HTTP responses
+- **Improved ASCII Art**: Better image rendering with error handling
+- **Visual Boundaries**: Clear content separation with decorative borders
+
+### Implementation Details
+
+- **Enhanced HTMLRenderer**: Updated `renderer/html.go` with comprehensive content extraction
+- **GZIP Support**: Added compression handling in `browser/client.go`
+- **Content Categorization**: Separate handling for titles, headings, paragraphs, navigation, links, lists, and images
+- **Visual Formatting**: Emoji-based indicators and structured layout
+- **Error Handling**: Graceful fallbacks for failed image conversions
+
+### Content Display Features
+
+1. **Title Display**: Prominent title with decorative underline
+2. **Hierarchical Headings**: H1 with double-line underline, H2 with single-line, others with bullet points
+3. **Navigation Section**: Dedicated section for menu and navigation links
+4. **Main Content**: Extraction and display of primary content areas
+5. **Links Section**: Organized display of important page links
+6. **List Items**: Structured display of bulleted and numbered lists
+7. **Image Gallery**: ASCII art conversion with metadata display
+8. **Content Summary**: Statistical overview of page elements
+
+### Visual Output Example
+
+```
+============================================================
+           BRAUSER - TERMINAL WEB CONTENT
+============================================================
+
+📄 TITLE: Example Domain
+------------------------
+
+🔸 Example Domain
+==============
+
+This domain is for use in illustrative examples...
+
+🧭 NAVIGATION:
+  • Home (/)
+  • About (/about)
+
+🔗 LINKS:
+  → More information... (https://www.iana.org/domains/example)
+
+🖼️  IMAGES:
+  Image 1: logo.png (alt: Company Logo)
+    ASCII Art:
+    ████████
+    ██    ██
+    ████████
+
+============================================================
+📊 CONTENT SUMMARY: 1 headings, 2 paragraphs, 1 links
+============================================================
+```
+
+### Testing Results
+
+- **Example.com**: Clean display of simple content structure
+- **Hacker News**: Proper extraction of story titles and links
+- **GitHub**: Complex page with headings, navigation, and content sections
+- **StackOverflow**: Handling of dynamic content and cookie banners
+
+### Development Guidelines
+
+- Always handle GZIP compression in HTTP responses
+- Use emoji indicators for different content types
+- Limit content display to avoid terminal spam (e.g., max 15 links, 5 images)
+- Provide graceful fallbacks for failed operations
+- Structure output with clear visual boundaries
+- Include summary statistics for user awareness
