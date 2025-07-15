@@ -56,9 +56,27 @@ Ideation on tools and modules:
     - [x] Install the selected library.
     - [x] Update code to fetch images from HTML, convert to ASCII, and render in terminal.
     - [x] Test ASCII image rendering with a sample page containing images.
-  6. Implement navigation (links, back/forward) and user input.
-  7. Test on MacOS for cross-platform compatibility.
-  8. Optimize for performance and minimalism.
+  6. [x] **REFACTORING PHASE** - Improve code organization and maintainability
+    - [x] Split monolithic main.go into separate modules
+      - [x] Create browser/ package for core browser functionality
+      - [x] Create js/ package for JavaScript execution and stubs
+      - [x] Create renderer/ package for HTML and image rendering
+      - [x] Create config/ package for configuration management
+    - [x] Implement proper error handling patterns
+    - [ ] Add comprehensive unit tests
+    - [ ] Optimize performance bottlenecks
+    - [ ] Improve memory management
+  7. **CONTENT DETECTION & DYNAMIC LOADING IMPROVEMENTS**
+    - [ ] Enhanced Content Detection: Detect when sites show loading pages vs actual content
+    - [ ] Wait Mechanisms: Add optional delays for sites that load content dynamically
+    - [ ] Content Validation: Verify if extracted content represents actual page or loading screen
+    - [ ] Site-Specific Handling: Add CodePen-specific handling for better content processing
+    - [ ] Loading State Recognition: Identify common loading indicators ("Just a moment...", spinners, etc.)
+    - [ ] Retry Logic: Implement smart retry mechanisms for pages that require time to load
+    - [ ] Handle cookie/adblock banners and other interstitial pages
+  8. Implement navigation (links, back/forward) and user input.
+  9. Test on MacOS for cross-platform compatibility.
+  10. Optimize for performance and minimalism.
 
 ## Test Websites
 
@@ -66,11 +84,23 @@ lets test with websites such as (add more throughout the project, test randomly 
 
 https://www.orf.at
 https://diepresse.com
-https://derstandard.at
+https://derstandard.at - successfully renders, shows adblock/js wall, good test case for content detection
 https://news.ycombinator.com/
 https://techcrunch.com
+https://codepen.io/ 
+https://cnn.com
 
 ## LEARNINGS, CODING GUIDELINES & CODING RULES
+
+### Key Learnings
+1. **JavaScript Compatibility**: Many websites use modern JS features that need to be stubbed out for compatibility
+2. **Error Handling**: Graceful degradation is crucial - websites should still be usable even when JS fails
+3. **Image Processing**: ASCII art conversion adds visual appeal while maintaining terminal compatibility
+4. **Site-Specific Handling**: Different websites have unique requirements (e.g., HackerNews story parsing)
+5. **Performance**: Timeout mechanisms prevent hanging on problematic scripts
+6. **Code Organization**: Refactoring monolithic code into packages improves maintainability and testability
+7. **Go Module System**: Proper import paths are crucial - relative imports don't work in module mode
+8. **Struct Definition**: Complex nested structs require careful attention to closing braces and field access patterns
 
 ### Configuration Management
 - **External Configuration**: Move complex settings to external JSON/YAML files for runtime customization
