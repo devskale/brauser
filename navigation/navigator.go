@@ -257,6 +257,11 @@ func (n *Navigator) GetLinkByNumber(number int) *Link {
 	return nil
 }
 
+// GetLinks returns all extracted links (for testing purposes)
+func (n *Navigator) GetLinks() []Link {
+	return n.links
+}
+
 // ShowNavigationMenu displays the interactive navigation menu
 func (n *Navigator) ShowNavigationMenu() {
 	fmt.Println("\n" + strings.Repeat("=", 60))

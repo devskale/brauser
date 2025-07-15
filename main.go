@@ -9,6 +9,7 @@ import (
 	"brauser/js"
 	"brauser/navigation"
 	"brauser/renderer"
+	"github.com/PuerkitoBio/goquery"
 )
 
 // main is the entry point of the Brauser application with interactive navigation.
@@ -73,8 +74,8 @@ func startInteractiveBrowsing(client *browser.Client, htmlRenderer *renderer.HTM
 				if entry := navigator.GoBack(); entry != nil {
 					currentURL = entry.URL
 					fmt.Printf("⬅️  Going back to: %s\n", currentURL)
-					// Display cached content
-					displayCachedPage(entry)
+					// Display cached content and re-extract links
+					displayCachedPage(entry, htmlRenderer, navigator)
 					navigator.ShowNavigationMenu()
 					navigator.DisplayLinks()
 				}
@@ -83,8 +84,8 @@ func startInteractiveBrowsing(client *browser.Client, htmlRenderer *renderer.HTM
 				if entry := navigator.GoForward(); entry != nil {
 					currentURL = entry.URL
 					fmt.Printf("➡️  Going forward to: %s\n", currentURL)
-					// Display cached content
-					displayCachedPage(entry)
+					// Display cached content and re-extract links
+					displayCachedPage(entry, htmlRenderer, navigator)
 					navigator.ShowNavigationMenu()
 					navigator.DisplayLinks()
 				}
@@ -164,20 +165,26 @@ func loadAndDisplayPage(client *browser.Client, htmlRenderer *renderer.HTMLRende
 	return nil
 }
 
-// displayCachedPage shows a cached page from history
-func displayCachedPage(entry *navigation.HistoryEntry) {
-	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("           BRAUSER - CACHED CONTENT")
-	fmt.Println(strings.Repeat("=", 60))
-	
-	if entry.Title != "" {
-		fmt.Printf("\n📄 TITLE: %s\n", entry.Title)
-		fmt.Println(strings.Repeat("-", len(entry.Title)+10))
+// displayCachedPage shows a cached page from history and re-extracts links
+func displayCachedPage(entry *navigation.HistoryEntry, htmlRenderer *renderer.HTMLRenderer, navigator *navigation.Navigator) {
+	// Re-render the cached HTML content to display it properly
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(entry.Content))
+	if err != nil {
+		fmt.Printf("❌ Error parsing cached content: %v\n", err)
+		return
 	}
 	
-	fmt.Printf("🌐 URL: %s\n", entry.URL)
+	// Render the cached content
+	_, err = htmlRenderer.RenderHTML(entry.Content, entry.URL)
+	if err != nil {
+		fmt.Printf("❌ Error rendering cached content: %v\n", err)
+		return
+	}
+	
+	// Re-extract links from the cached content
+	navigator.ExtractLinks(doc, entry.URL)
+	
 	fmt.Println("\n💾 (Displaying cached content - use 'r' to refresh)")
-	fmt.Println(strings.Repeat("=", 60))
 }
 
 // displayContentAnalysis shows the content analysis results to the user

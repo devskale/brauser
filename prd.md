@@ -99,6 +99,7 @@ Ideation on tools and modules:
   - [x] History Management: Full browsing history with current page indicators
   - [x] Cached Content Display: Show cached pages for back/forward navigation
   - [x] URL Resolution: Proper handling of relative URLs against base URL
+  - [x] **Back Navigation Fix**: Fixed issue where back navigation showed incorrect links by ensuring cached pages re-extract links from their HTML content
   10. Test on MacOS for cross-platform compatibility.
   11. Optimize for performance and minimalism.
 
