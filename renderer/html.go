@@ -83,6 +83,21 @@ func (r *HTMLRenderer) RenderHTML(htmlContent, baseURL string) (*goquery.Documen
 		}
 	})
 
+	// Extract Hacker News stories (table-based layout)
+	doc.Find(".athing").Each(func(i int, s *goquery.Selection) {
+		if i >= 30 { // Limit to top 30 stories
+			return
+		}
+		headingCount++
+		
+		// Get story title and link
+		titleLink := s.Find(".titleline > a").First()
+		title := strings.TrimSpace(titleLink.Text())
+		if title != "" {
+			r.printf("\n📰 %s\n", title)
+		}
+	})
+
 	// Extract and print paragraphs with better formatting
 	paragraphCount := 0
 	doc.Find("p").Each(func(i int, s *goquery.Selection) {
@@ -92,6 +107,20 @@ func (r *HTMLRenderer) RenderHTML(htmlContent, baseURL string) (*goquery.Documen
 			r.printf("\n%s\n", text)
 		}
 	})
+
+	// Extract content from common container elements if no paragraphs found
+	if paragraphCount == 0 {
+		doc.Find(".content, .main, .post, .entry, .article-content, .story-content").Each(func(i int, s *goquery.Selection) {
+			text := strings.TrimSpace(s.Text())
+			if text != "" && len(text) > 50 {
+				paragraphCount++
+				r.printf("\n📝 CONTENT:\n%s\n", text[:min(300, len(text))])
+				if len(text) > 300 {
+					r.println("... (content truncated)")
+				}
+			}
+		})
+	}
 
 	// Extract and print main content areas
 	doc.Find("main, article, .content, .main-content, #content").Each(func(i int, s *goquery.Selection) {
@@ -144,6 +173,13 @@ func (r *HTMLRenderer) renderImages(doc *goquery.Document, baseURL string) {
 		src, exists := s.Attr("src")
 		alt := s.AttrOr("alt", "")
 		if exists && imageCount < 5 { // Limit to 5 images to avoid spam
+			// Skip problematic image formats
+			if strings.HasSuffix(strings.ToLower(src), ".svg") ||
+			   strings.Contains(strings.ToLower(src), "1x1") ||
+			   strings.Contains(strings.ToLower(src), "pixel") {
+				return // Skip tracking pixels and SVGs
+			}
+			
 			imageCount++
 			if imageCount == 1 {
 				r.println("\n🖼️  IMAGES:")
@@ -157,7 +193,11 @@ func (r *HTMLRenderer) renderImages(doc *goquery.Document, baseURL string) {
 			// Try to render as ASCII art
 			asciiArt, err := r.imageRenderer.RenderImageAsASCII(src, baseURL)
 			if err != nil {
-				r.printf("    [ASCII conversion failed: %v]\n", err)
+				if alt != "" {
+					r.printf("    [Image: %s]\n", alt)
+				} else {
+					r.printf("    [Image conversion failed: unsupported format]\n")
+				}
 			} else {
 				r.println("    ASCII Art:")
 				r.println(asciiArt)

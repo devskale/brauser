@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -103,6 +104,14 @@ func (n *Navigator) GetCurrentPage() *HistoryEntry {
 	return nil
 }
 
+// cleanLinkText removes excessive whitespace and newlines from link text
+func (n *Navigator) cleanLinkText(text string) string {
+	// Remove all newlines and replace with single spaces
+	re := regexp.MustCompile(`\s+`)
+	cleaned := re.ReplaceAllString(text, " ")
+	return strings.TrimSpace(cleaned)
+}
+
 // ExtractLinks extracts all clickable links from the HTML document and assigns numbers
 func (n *Navigator) ExtractLinks(doc *goquery.Document, baseURL string) {
 	n.links = make([]Link, 0)
@@ -116,7 +125,7 @@ func (n *Navigator) ExtractLinks(doc *goquery.Document, baseURL string) {
 	
 	// Extract navigation links
 	doc.Find("nav a, .nav a, .menu a").Each(func(i int, s *goquery.Selection) {
-		text := strings.TrimSpace(s.Text())
+		text := n.cleanLinkText(s.Text())
 		href, exists := s.Attr("href")
 		if exists && text != "" {
 			resolvedURL := n.resolveURL(href, base)
@@ -132,7 +141,7 @@ func (n *Navigator) ExtractLinks(doc *goquery.Document, baseURL string) {
 	
 	// Extract content links
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
-		text := strings.TrimSpace(s.Text())
+		text := n.cleanLinkText(s.Text())
 		href, exists := s.Attr("href")
 		if exists && text != "" && len(text) > 3 && linkNumber <= 50 {
 			// Skip if already added as navigation
@@ -158,7 +167,7 @@ func (n *Navigator) ExtractLinks(doc *goquery.Document, baseURL string) {
 	
 	// Extract HackerNews stories
 	doc.Find(".athing").Each(func(i int, s *goquery.Selection) {
-		title := strings.TrimSpace(s.Find(".titleline > a").Text())
+		title := n.cleanLinkText(s.Find(".titleline > a").Text())
 		link := s.Find(".titleline > a").AttrOr("href", "")
 		if title != "" && link != "" && linkNumber <= 50 {
 			resolvedURL := n.resolveURL(link, base)

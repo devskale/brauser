@@ -68,9 +68,11 @@ Ideation on tools and modules:
   - [ ] Improve memory management
   7. [x] **CONTENT DETECTION & DYNAMIC LOADING IMPROVEMENTS**
   - [x] Enhanced Content Detection: Detect when sites show loading pages vs actual content
+  - [x] Improved Image Handling: Filter out problematic image formats (SVG, tracking pixels) to prevent rendering errors
   - [x] Wait Mechanisms: Add optional delays for sites that load content dynamically
   - [x] Content Validation: Verify if extracted content represents actual page or loading screen
   - [x] Site-Specific Handling: Add CodePen-specific handling for better content processing
+  - [x] ~~Hacker News Handler~~ → Removed: General HTML renderer handles all sites effectively
   - [x] Loading State Recognition: Identify common loading indicators ("Just a moment...", spinners, etc.)
   - [x] Retry Logic: Implement smart retry mechanisms for pages that require time to load
   - [x] Handle cookie/adblock banners and other interstitial pages
@@ -82,6 +84,11 @@ Ideation on tools and modules:
   - [x] GZIP decompression support for HTTP responses
   - [x] Improved ASCII art image rendering
   - [x] Visual content boundaries and separators
+  - [x] **Output Formatting Improvements**: Implemented buffered output system to compress multiple consecutive empty lines
+  - [x] **Regex-based Whitespace Normalization**: Added pattern matching to clean up excessive whitespace in HTML output
+  - [x] **Consistent Output Formatting**: Created helper methods (printf, println, flushOutput) for uniform output handling
+  - [x] **Improved Terminal Display**: Enhanced readability by removing redundant empty lines while preserving content structure
+  - [x] **Link Text Cleanup**: Fixed excessive empty lines in content links by implementing regex-based whitespace normalization for extracted link text
   9. [x] **INTERACTIVE NAVIGATION SYSTEM** - Complete browser-like navigation experience
   - [x] Link Navigation: Implemented clickable links with numbered selection (e.g., [1], [2], [3])
   - [x] Back/Forward History: Added browser-like navigation with history stack (50 page limit)
@@ -142,42 +149,54 @@ https://cnn.com
 
 ## LEARNINGS, CODING GUIDELINES & CODING RULES
 
+### Coding Guidelines
+
+- **Modular Design**: Keep components loosely coupled and highly cohesive
+- **Error Handling**: Always handle errors gracefully and provide meaningful feedback
+- **Testing**: Write tests for critical functionality, especially content detection logic
+- **Performance**: Implement timeouts and resource limits to prevent hanging
+- **User Experience**: Provide clear feedback during long operations
+- **Code Organization**: Use packages to separate concerns (browser, renderer, etc.)
+- **Import Management**: Use absolute imports in Go modules, avoid relative imports
+- **Content Validation**: Always validate extracted content before processing
+- **Retry Logic**: Implement exponential backoff for retry mechanisms
+- **Resource Management**: Properly close HTTP connections and clean up resources
+- **Generalization First**: Prefer building robust general-purpose components over site-specific solutions. Only add specialized handlers when the general approach fails.
+- **Graceful Degradation**: When optional features (like image rendering) fail, continue with core functionality and provide informative error messages rather than breaking the entire experience.
+
 ### Key Learnings
 
 1. **JavaScript Compatibility**: Many websites use modern JS features that need to be stubbed out for compatibility
 2. **Error Handling**: Graceful degradation is crucial - websites should still be usable even when JS fails
 3. **Image Processing**: ASCII art conversion adds visual appeal while maintaining terminal compatibility
 4. **Site-Specific Handling**: Different websites have unique requirements (e.g., HackerNews story parsing)
-5. **Performance**: Timeout mechanisms prevent hanging on problematic scripts
-6. **Code Organization**: Refactoring monolithic code into packages improves maintainability and testability
-7. **Go Module System**: Proper import paths are crucial - relative imports don't work in module mode
-8. **Struct Definition**: Complex nested structs require careful attention to closing braces and field access patterns
-9. **Content Detection**: Modern websites often show loading screens, cookie banners, or adblock messages before actual content
-10. **Dynamic Loading**: Many sites load content asynchronously, requiring retry mechanisms with appropriate wait times
-11. **Site-Specific Patterns**: Different sites have unique loading patterns and content structures that benefit from specialized handling
-12. **User Feedback**: Clear visual indicators help users understand what's happening during page loading and content analysis.
-13. **HTTP Compression**: Modern websites use GZIP compression extensively - proper decompression is essential for content parsing.
-
-14. **Visual Terminal Design**: Well-structured terminal output with emojis, separators, and hierarchical formatting significantly improves readability.
-15. **Content Extraction Strategy**: Different content types (headings, paragraphs, navigation, lists) require different extraction and display strategies.
-
-16. **ASCII Art Limitations**: SVG and complex image formats often fail ASCII conversion - graceful error handling is important.
-17. **Interactive Navigation Design**: Numbered link selection provides intuitive navigation in terminal environments - users can easily select links without complex keyboard navigation.
-
-18. **History Management**: Browser-like back/forward functionality significantly improves user experience - caching content enables instant navigation through history.
-
-19. **Link Categorization**: Organizing links by type (navigation, content, stories) helps users understand page structure and find relevant links faster.
-
-20. **User Input Patterns**: Simple command patterns (single letters, numbers) work best in terminal interfaces - complex commands should be avoided for better usability.
-
-21. **URL Resolution**: Proper relative URL resolution is crucial for navigation - many websites use relative links that need to be resolved against the base URL.
-
-22. **Interactive Loop Design**: Separating page loading from user interaction allows for responsive navigation without reloading pages unnecessarily.
-23. **Content Rendering Verification**: Always test content rendering with actual websites to ensure proper display
-
-24. **Debug Output Analysis**: Comprehensive logging helps identify content detection and rendering issues
-
-25. **User Perception vs Reality**: Sometimes content is rendered correctly but user interface issues can create perception of missing content
+5. **Generalization Over Specialization**: A well-designed general HTML renderer can handle most websites effectively, reducing the need for site-specific handlers. Only create specialized handlers when truly necessary.
+6. **Non-Semantic HTML Handling**: Many websites use table-based layouts and CSS classes instead of semantic HTML elements. The renderer must be flexible enough to extract content from common patterns like `.athing`, `.titleline`, etc.
+7. **Performance**: Timeout mechanisms prevent hanging on problematic scripts
+8. **Code Organization**: Refactoring monolithic code into packages improves maintainability and testability
+9. **Go Module System**: Proper import paths are crucial - relative imports don't work in module mode
+10. **Struct Definition**: Complex nested structs require careful attention to closing braces and field access patterns
+11. **Content Detection**: Modern websites often show loading screens, cookie banners, or adblock messages before actual content
+12. **Dynamic Loading**: Many sites load content asynchronously, requiring retry mechanisms with appropriate wait times
+13. **Site-Specific Patterns**: Different sites have unique loading patterns and content structures that benefit from specialized handling
+14. **User Feedback**: Clear visual indicators help users understand what's happening during page loading and content analysis.
+15. **HTTP Compression**: Modern websites use GZIP compression extensively - proper decompression is essential for content parsing.
+16. **Visual Terminal Design**: Well-structured terminal output with emojis, separators, and hierarchical formatting significantly improves readability.
+17. **Content Extraction Strategy**: Different content types (headings, paragraphs, navigation, lists) require different extraction and display strategies.
+18. **ASCII Art Limitations**: SVG and complex image formats often fail ASCII conversion - graceful error handling is important.
+19. **Interactive Navigation Design**: Numbered link selection provides intuitive navigation in terminal environments - users can easily select links without complex keyboard navigation.
+20. **History Management**: Browser-like back/forward functionality significantly improves user experience - caching content enables instant navigation through history.
+21. **Link Categorization**: Organizing links by type (navigation, content, stories) helps users understand page structure and find relevant links faster.
+22. **User Input Patterns**: Simple command patterns (single letters, numbers) work best in terminal interfaces - complex commands should be avoided for better usability.
+23. **URL Resolution**: Proper relative URL resolution is crucial for navigation - many websites use relative links that need to be resolved against the base URL.
+24. **Interactive Loop Design**: Separating page loading from user interaction allows for responsive navigation without reloading pages unnecessarily.
+25. **Content Rendering Verification**: Always test content rendering with actual websites to ensure proper display
+26. **Debug Output Analysis**: Comprehensive logging helps identify content detection and rendering issues
+27. **User Perception vs Reality**: Sometimes content is rendered correctly but user interface issues can create perception of missing content
+28. **Output Formatting & User Experience**: Buffer output before displaying to enable post-processing, compress multiple consecutive empty lines for cleaner display, and use regex patterns to normalize whitespace in terminal output
+29. **Site Handler HTML Integration**: Site handlers must return properly formatted HTML (not plain text) to integrate correctly with the HTML renderer - the renderer expects HTML structure with headings, paragraphs, and links for proper content extraction and display
+30. **Image Format Support**: ASCII image conversion has limitations with certain formats (SVG, some GIFs) - consider filtering out problematic image types or providing fallback text descriptions to improve user experience
+31. **Link Text Normalization**: HTML link text often contains excessive whitespace and newlines from the DOM structure - use regex patterns to normalize whitespace (`\s+` → single space) and trim edges for clean terminal display
 
 ### Configuration Management
 
