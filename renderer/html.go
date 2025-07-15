@@ -2,6 +2,7 @@ package renderer
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -10,6 +11,7 @@ import (
 // HTMLRenderer handles rendering of HTML content to terminal
 type HTMLRenderer struct {
 	imageRenderer *ImageRenderer
+	outputBuffer  strings.Builder
 }
 
 // NewHTMLRenderer creates a new HTML renderer
@@ -19,6 +21,30 @@ func NewHTMLRenderer() *HTMLRenderer {
 	}
 }
 
+// compressEmptyLines removes multiple consecutive empty lines and replaces them with single empty lines
+func (r *HTMLRenderer) compressEmptyLines(text string) string {
+	// Replace multiple consecutive newlines with double newlines (single empty line)
+	re := regexp.MustCompile(`\n\s*\n\s*\n+`)
+	return re.ReplaceAllString(text, "\n\n")
+}
+
+// printf writes formatted output to the buffer instead of directly to stdout
+func (r *HTMLRenderer) printf(format string, args ...interface{}) {
+	r.outputBuffer.WriteString(fmt.Sprintf(format, args...))
+}
+
+// println writes a line to the buffer instead of directly to stdout
+func (r *HTMLRenderer) println(text string) {
+	r.outputBuffer.WriteString(text + "\n")
+}
+
+// flushOutput compresses empty lines and prints the final output
+func (r *HTMLRenderer) flushOutput() {
+	compressed := r.compressEmptyLines(r.outputBuffer.String())
+	fmt.Print(compressed)
+	r.outputBuffer.Reset()
+}
+
 // RenderHTML parses the HTML content and displays it in a structured format
 func (r *HTMLRenderer) RenderHTML(htmlContent, baseURL string) (*goquery.Document, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlContent))
@@ -26,15 +52,15 @@ func (r *HTMLRenderer) RenderHTML(htmlContent, baseURL string) (*goquery.Documen
 		return nil, fmt.Errorf("failed to parse HTML: %v", err)
 	}
 
-	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("           BRAUSER - TERMINAL WEB CONTENT")
-	fmt.Println(strings.Repeat("=", 60))
+	r.println("\n" + strings.Repeat("=", 60))
+	r.println("           BRAUSER - TERMINAL WEB CONTENT")
+	r.println(strings.Repeat("=", 60))
 
 	// Extract and print title
 	title := doc.Find("title").Text()
 	if title != "" {
-		fmt.Printf("\n📄 TITLE: %s\n", title)
-		fmt.Println(strings.Repeat("-", len(title)+10))
+		r.printf("\n📄 TITLE: %s\n", title)
+		r.println(strings.Repeat("-", len(title)+10))
 	}
 
 	// Extract and print headings with hierarchy
@@ -46,13 +72,13 @@ func (r *HTMLRenderer) RenderHTML(htmlContent, baseURL string) (*goquery.Documen
 		if text != "" {
 			switch tagName {
 			case "h1":
-				fmt.Printf("\n🔸 %s\n", text)
-				fmt.Println(strings.Repeat("=", len(text)))
+				r.printf("\n🔸 %s\n", text)
+				r.println(strings.Repeat("=", len(text)))
 			case "h2":
-				fmt.Printf("\n▸ %s\n", text)
-				fmt.Println(strings.Repeat("-", len(text)))
+				r.printf("\n▸ %s\n", text)
+				r.println(strings.Repeat("-", len(text)))
 			default:
-				fmt.Printf("\n• %s\n", text)
+				r.printf("\n• %s\n", text)
 			}
 		}
 	})
@@ -63,7 +89,7 @@ func (r *HTMLRenderer) RenderHTML(htmlContent, baseURL string) (*goquery.Documen
 		text := strings.TrimSpace(s.Text())
 		if text != "" && len(text) > 10 { // Filter out very short paragraphs
 			paragraphCount++
-			fmt.Printf("\n%s\n", text)
+			r.printf("\n%s\n", text)
 		}
 	})
 
@@ -71,9 +97,9 @@ func (r *HTMLRenderer) RenderHTML(htmlContent, baseURL string) (*goquery.Documen
 	doc.Find("main, article, .content, .main-content, #content").Each(func(i int, s *goquery.Selection) {
 		text := strings.TrimSpace(s.Text())
 		if text != "" && len(text) > 50 {
-			fmt.Printf("\n📝 MAIN CONTENT:\n%s\n", text[:min(500, len(text))])
+			r.printf("\n📝 MAIN CONTENT:\n%s\n", text[:min(500, len(text))])
 			if len(text) > 500 {
-				fmt.Println("... (content truncated)")
+				r.println("... (content truncated)")
 			}
 		}
 	})
@@ -90,9 +116,9 @@ func (r *HTMLRenderer) RenderHTML(htmlContent, baseURL string) (*goquery.Documen
 		if text != "" && len(text) > 5 && listCount < 10 {
 			listCount++
 			if listCount == 1 {
-				fmt.Println("\n📋 LIST ITEMS:")
+				r.println("\n📋 LIST ITEMS:")
 			}
-			fmt.Printf("  • %s\n", text)
+			r.printf("  • %s\n", text)
 		}
 	})
 
@@ -100,10 +126,13 @@ func (r *HTMLRenderer) RenderHTML(htmlContent, baseURL string) (*goquery.Documen
 	r.renderImages(doc, baseURL)
 
 	// Summary
-	fmt.Printf("\n" + strings.Repeat("=", 60))
-	fmt.Printf("\n📊 CONTENT SUMMARY: %d headings, %d paragraphs\n", headingCount, paragraphCount)
-	fmt.Println("💡 Use navigation menu to interact with links")
-	fmt.Println(strings.Repeat("=", 60))
+	r.printf("\n" + strings.Repeat("=", 60))
+	r.printf("\n📊 CONTENT SUMMARY: %d headings, %d paragraphs\n", headingCount, paragraphCount)
+	r.println("💡 Use navigation menu to interact with links")
+	r.println(strings.Repeat("=", 60))
+
+	// Flush the buffered output with compressed empty lines
+	r.flushOutput()
 
 	return doc, nil
 }
@@ -117,21 +146,21 @@ func (r *HTMLRenderer) renderImages(doc *goquery.Document, baseURL string) {
 		if exists && imageCount < 5 { // Limit to 5 images to avoid spam
 			imageCount++
 			if imageCount == 1 {
-				fmt.Println("\n🖼️  IMAGES:")
+				r.println("\n🖼️  IMAGES:")
 			}
-			fmt.Printf("  Image %d: %s", imageCount, src)
+			r.printf("  Image %d: %s", imageCount, src)
 			if alt != "" {
-				fmt.Printf(" (alt: %s)", alt)
+				r.printf(" (alt: %s)", alt)
 			}
-			fmt.Println()
+			r.println("")
 			
 			// Try to render as ASCII art
 			asciiArt, err := r.imageRenderer.RenderImageAsASCII(src, baseURL)
 			if err != nil {
-				fmt.Printf("    [ASCII conversion failed: %v]\n", err)
+				r.printf("    [ASCII conversion failed: %v]\n", err)
 			} else {
-				fmt.Println("    ASCII Art:")
-				fmt.Println(asciiArt)
+				r.println("    ASCII Art:")
+				r.println(asciiArt)
 			}
 		}
 	})
