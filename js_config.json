@@ -1,0 +1,94 @@
+{
+  "javascript_compatibility": {
+    "enabled": true,
+    "timeout_seconds": 2,
+    "max_execution_time_seconds": 3,
+    "categories": {
+      "console": {
+        "enabled": true,
+        "methods": ["log", "warn", "error", "info", "debug"]
+      },
+      "dom": {
+        "enabled": true,
+        "methods": {
+          "document": ["getElementById", "createElement", "getElementsByTagName", "querySelector", "querySelectorAll", "addEventListener", "write"],
+          "element": ["innerHTML", "className", "classList", "setAttribute", "appendChild", "addEventListener", "insertBefore", "removeChild"],
+          "classList": ["add", "remove", "toggle", "contains"],
+          "parentNode": ["insertBefore", "appendChild", "removeChild"]
+        }
+      },
+      "browser": {
+        "enabled": true,
+        "window": {
+          "location": {
+            "protocol": "https:",
+            "host": "localhost",
+            "pathname": "/"
+          },
+          "methods": ["addEventListener", "__tcfapiLocator"]
+        },
+        "navigator": {
+          "userAgent": "Brauser/1.0"
+        }
+      },
+      "storage": {
+        "enabled": true,
+        "localStorage": {
+          "methods": ["getItem", "setItem", "removeItem", "clear"]
+        },
+        "sessionStorage": {
+          "methods": ["getItem", "setItem", "removeItem", "clear"]
+        }
+      },
+      "webapi": {
+        "enabled": true,
+        "matchMedia": {
+          "enabled": true,
+          "properties": ["matches", "media"],
+          "methods": ["addListener", "removeListener", "addEventListener", "removeEventListener"]
+        },
+        "CustomEvent": {
+          "enabled": true,
+          "properties": ["type", "detail", "bubbles", "cancelable"]
+        },
+        "URLSearchParams": {
+          "enabled": true,
+          "methods": ["get", "set", "has", "append", "delete"]
+        }
+      },
+      "frameworks": {
+        "enabled": true,
+        "jquery": {
+          "enabled": true,
+          "methods": ["ready", "on", "off", "click", "addClass", "removeClass", "hide", "show"],
+          "properties": ["length"]
+        }
+      },
+      "site_specific": {
+        "enabled": true,
+        "globals": {
+          "wp": {
+            "enabled": true,
+            "description": "WordPress global"
+          },
+          "StackExchange": {
+            "enabled": true,
+            "description": "Stack Overflow global"
+          },
+          "dataLayer": {
+            "enabled": true,
+            "description": "Google Analytics data layer"
+          },
+          "loadScript": {
+            "enabled": true,
+            "description": "Common script loader function"
+          },
+          "IOMm": {
+            "enabled": true,
+            "description": "Common global object"
+          }
+        }
+      }
+    }
+  }
+}
